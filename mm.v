@@ -130,6 +130,7 @@ frequencyDivider fd1(clk, fracClk);
 /*UART*/	
 reg [7:0] tx_reg;
 reg [7:0] rx_reg;
+reg blockStat=1;
 wire [7:0] rx_wire;
 reg valid=0, wait_reg=0;
 uart_tx utx1(fracClk, tx_reg, valid, UART_TX, led[1]);
@@ -140,6 +141,7 @@ reg [7:0] matrice1[15:0];
 reg [7:0] matrice2[15:0];
 reg [15:0] matrice3[15:0];
 reg [5:0] status;
+reg [5:0] i;
 reg prevLed=1;
 
 assign o=rx_wire[5:0];
@@ -175,13 +177,28 @@ begin
 		end
 		if (status<48 && status>31)
 		begin
+			matrice3[status-32]=0;
+			for (i=0; i<4; i=i+1)
+			begin
+				matrice3[status-32]=matrice3[status-32]+matrice1[((status-32)/4)*4+i]*matrice2[i*4+(status-32)%4];
+			end
+			status=status+1;
+		end
+		if (status>47)
+		begin
 			if (led[1])
 			begin
 				if (!valid)
 				begin
-					tx_reg=matrice1[status-32];
-					status=status+1;
+					if (blockStat)
+						tx_reg=matrice3[status-48][15:8];
+					else
+					begin
+						tx_reg=matrice3[status-48][7:0];
+						status=status+1;
+					end
 					valid=1;
+					blockStat=~blockStat;
 				end else
 				begin
 					if (wait_reg)
